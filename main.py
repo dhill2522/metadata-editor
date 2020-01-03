@@ -12,9 +12,6 @@ class App(object):
         self.g = tk.Tk()
         self.g.title('Simple Metadata Editor')
 
-        # FIXME: use shutil to check if ffmpeg exists and set label if not.
-        shutil.which('ffmpeg')
-
         self.btn_select = tk.Button(self.g, text='Select File', command=self.selectFile).grid(row=0, column=0)
         self.selectedFileLabel = tk.Label(self.g, text=self.selectedFile)
         self.selectedFileLabel.grid(row=0, column=1, columnspan=2)
@@ -34,8 +31,12 @@ class App(object):
         self.btn_submit = tk.Button(self.g, text="Update Metabata", command=self.do_stuff).grid(row=5, column=1)
         self.btn_close = tk.Button(self.g, text="Close", command=self.g.destroy).grid(row=5, column=2)
 
+        if not shutil.which('ffmpeg'):
+            print('FFmpeg is not in the system path.')
+            self.msg_label.config(text='Please install FFmpeg first. https://ffmpeg.org/')
+
     def selectFile(self):
-        self.selectedFile = filedialog.askopenfilename()
+        self.selectedFile = filedialog.askopenfilename(filetypes=(('MP4 video', '*.mp4'),))
         self.selectedFileLabel.config(text=self.selectedFile)
 
     def updateDate(self):

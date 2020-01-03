@@ -2,74 +2,78 @@ import tkinter as tk
 import datetime
 from tkinter import filedialog
 import subprocess
+import shutil
+import time
 
-def selectFile():
-    f = filedialog.askopenfilename()
-    print('Selected File:', f)
-    if f:
-        selectedFileLabel.config(text=f)
+class App(object):
+    def __init__(self):
+        self.selectedFile = 'None Selected'
 
-def updateDate(date):
-    # Run ffmpeg from commandline as the python package does not seem
-    # to support updating metadata
-    tk.Label(g, text='Updating metdata...').grid(row=4, column=1, columnspan=2)
-    d = f"{date['y']}-{date['mo']}-{date['d']}T{date['h']}:{date['mi']}:{date['s']}"
-    selectedFile = selectedFileLabel.cget('text')
-    print(['ffmpeg', '-i', selectedFile, '-metadata', f'creation_time={d}', f'{selectedFile[:-4]}-updated.mp4'])
-    exit_code = subprocess.call(['ffmpeg', '-i', selectedFile, 
-                                '-metadata', f'creation_time={d}', f'{selectedFile[:-4]}-updated.mp4'])
-    if exit_code != 0:
-        raise(Exception('Error updating metadata'))
+        self.g = tk.Tk()
+        self.g.title('Simple Metadata Editor')
 
-def do_stuff():
-    # Check to make sure the datetime is in the right format
-    try:
-        year, month, day = new_date.get().split('-')
-        hour, minute, second = new_time.get().split(':')
+        # FIXME: use shutil to check if ffmpeg exists and set label if not.
+        shutil.which('ffmpeg')
 
-        new_datetime = {
-            'y': int(year),
-            'mo': int(month),
-            'd': int(day),
-            'h': int(hour),
-            'mi': int(minute),
-            's': int(second)
-        }
+        self.btn_select = tk.Button(self.g, text='Select File', command=self.selectFile).grid(row=0, column=0)
+        self.selectedFileLabel = tk.Label(self.g, text=self.selectedFile)
+        self.selectedFileLabel.grid(row=0, column=1, columnspan=2)
+        self.msg_label = tk.Label(self.g, text='')
+        self.msg_label.grid(row=4, column=1, columnspan=2)
 
-        # new_datetime = datetime.datetime(int(year), int(month), int(day), 
-                                            # int(hour), int(minute), int(second))
-        # print('new datetime:', new_datetime.isoformat())
-    except Exception as err:
-        tk.Label(g, text='Check your date and time format.').grid(row=4, column=1, columnspan=2)
-        raise err
+        tk.Label(self.g, text='(yyyy-mm-dd)').grid(row=1, column=1)
+        tk.Label(self.g, text='(hh:mm:ss)').grid(row=1,   column=2)
+        tk.Label(self.g, text='New date and time:').grid(row=2, column=0)
 
-    try:
-        updateDate(new_datetime)
-    except Exception as err:
-        tk.Label(g, text='Error updating metadata.').grid(row=4, column=1, columnspan=2)
-        raise err
+        self.new_date = tk.Entry(self.g)
+        self.new_date.grid(row=2, column=1)
+        self.new_time = tk.Entry(self.g)
+        self.new_time.grid(row=2, column=2)
 
-    tk.Label(g, text='Metadata update successful.').grid(row=4, column=1, columnspan=2)
 
-g = tk.Tk()
-g.title('Simple Metadata Editor')
+        self.btn_submit = tk.Button(self.g, text="Update Metabata", command=self.do_stuff).grid(row=5, column=1)
+        self.btn_close = tk.Button(self.g, text="Close", command=self.g.destroy).grid(row=5, column=2)
 
-# FIXME: use shutil to check if ffmpeg exists and set label if not.
+    def selectFile(self):
+        self.selectedFile = filedialog.askopenfilename()
+        self.selectedFileLabel.config(text=self.selectedFile)
 
-btn_select = tk.Button(g, text='Select File', command=selectFile).grid(row=0, column=0)
-selectedFileLabel = tk.Label(g, text='None Selected')
-selectedFileLabel.grid(row=0, column=1, columnspan=2)
+    def updateDate(self):
+        # Run ffmpeg from commandline as the python package does not seem
+        # to support updating metadata
+        exit_code = subprocess.call(['ffmpeg', '-i', self.selectedFile, 
+                                    '-metadata', f'creation_time={self.date.isoformat()}', 
+                                    f'{self.selectedFile[:-4]}-updated.mp4'])
+        if exit_code != 0:
+            raise(Exception('Error updating metadata'))
 
-tk.Label(g, text='(yyyy-mm-dd)').grid(row=1, column=1)
-tk.Label(g, text='(hh:mm:ss)').grid(row=1,   column=2)
+    def do_stuff(self):
+        time.sleep(0.1)
+        self.msg_label.config(text='Updating metdata...')
+        # Check to make sure the datetime is in the right format
+        try:
+            year, month, day = self.new_date.get().split('-')
+            hour, minute, second = self.new_time.get().split(':')
+            self.date = datetime.datetime(int(year), int(month), int(day), 
+                                        int(hour), int(minute), int(second))
 
-tk.Label(g, text='New date and time:').grid(row=2, column=0)
-new_date = tk.Entry(g)
-new_date.grid(row=2, column=1)
-new_time = tk.Entry(g)
-new_time.grid(row=2, column=2)
+        except Exception as err:
+            self.msg_label.config(text='Check your date and time format.')
+            raise err
 
-btn_submit = tk.Button(g, text="Update Metabata", command=do_stuff).grid(row=5, column=1)
-btn_close = tk.Button(g, text="Close", command=g.destroy).grid(row=5, column=2)
+        # Update the metadata
+        try:
+            tk.Label(self.g, text='').grid(row=4, column=1, columnspan=2)
+            self.updateDate()
+        except Exception as err:
+            self.msg_label.config(text='Error Updating metdata.')
+            raise err
 
-g.mainloop()
+        self.msg_label.config(text='Metadata update successful..')
+
+    def run(self):
+        self.g.mainloop()
+
+if __name__ == "__main__":
+    app = App()
+    app.run()
